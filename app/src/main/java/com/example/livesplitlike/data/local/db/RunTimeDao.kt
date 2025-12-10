@@ -54,4 +54,24 @@ interface RunTimeDao {
         ORDER BY splitIndex ASC
     """)
     fun getBestSegmentTimesFlow(groupId: Long): Flow<List<BestSegmentLocal>>
+
+    @Query("""
+  WITH cumulative AS (
+    SELECT runId, splitIndex, timeFromStartMillis
+    FROM run_times
+    WHERE groupId = :groupId
+  ),
+  segs AS (
+    SELECT c.runId, c.splitIndex,
+           (c.timeFromStartMillis - COALESCE(p.timeFromStartMillis, 0)) AS segmentMillis
+    FROM cumulative c
+    LEFT JOIN cumulative p
+      ON p.runId = c.runId AND p.splitIndex = c.splitIndex - 1
+  )
+  SELECT splitIndex AS indexInGroup, MIN(segmentMillis) AS bestSegmentMillis
+  FROM segs
+  GROUP BY splitIndex
+  ORDER BY splitIndex ASC
+""")
+    suspend fun getBestSegmentTimesOnce(groupId: Long): List<com.example.livesplitlike.data.local.model.BestSegmentLocal>
 }

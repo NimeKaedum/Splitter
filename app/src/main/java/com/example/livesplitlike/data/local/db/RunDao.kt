@@ -9,9 +9,13 @@ interface RunDao {
     @Query("SELECT * FROM runs WHERE groupId = :groupId ORDER BY createdAtMillis DESC")
     fun getRunsForGroupFlow(groupId: Long): Flow<List<RunEntity>>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRun(run: RunEntity): Long
 
     @Delete
     suspend fun deleteRun(run: RunEntity)
+
+    @Query("SELECT * FROM runs WHERE id = :runId LIMIT 1")
+    suspend fun getRunById(runId: Long): RunEntity?
+
 }

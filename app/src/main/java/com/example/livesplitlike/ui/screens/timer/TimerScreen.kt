@@ -5,124 +5,192 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.navigation.NavHostController
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimerScreen(viewModel: TimerViewModel = hiltViewModel()) {
-    val elapsed = viewModel.elapsedMillis.collectAsState()
-    val items = viewModel.comparisonItemsFlow.collectAsState(initial = emptyList())
-    val isRunning = viewModel.isRunning.collectAsState()
-    val isPaused = viewModel.isPaused.collectAsState()
+fun TimerScreen(
+    viewModel: TimerViewModel = hiltViewModel(),
+    navController: NavHostController? = null,
+    onOpenGroups: () -> Unit
+) {
+    val elapsed by viewModel.elapsedMillis.collectAsState()
+    val items by viewModel.comparisonItemsFlow.collectAsState(initial = emptyList())
+    val isRunning by viewModel.isRunning.collectAsState()
+    val isPaused by viewModel.isPaused.collectAsState()
+    val templates by viewModel.templates.collectAsState()
+    val selectedGroupName by viewModel.selectedGroupName.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .padding(WindowInsets.systemBars.asPaddingValues()) // respeta status/navigation bars
-    ) {
-        Spacer(modifier = Modifier.height(8.dp)) // espacio superior extra
+    // Observe selection result from Groups screen via savedStateHandle
+    LaunchedEffect(navController) {
+        navController?.currentBackStackEntryFlow?.collectLatest { entry ->
+            val saved = entry.savedStateHandle.get<Long?>("selectedGroupId")
+            if (saved != null) {
+                if (saved > 0L) {
+                    viewModel.selectGroup(saved)
+                } else {
+                    scope.launch { snackbarHostState.showSnackbar("Grupo inválido seleccionado") }
+                }
+                entry.savedStateHandle.remove<Long>("selectedGroupId")
+            }
+        }
+    }
 
-        // Area clicable que cubre Splits + Cronometro
-        Box(
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        containerColor = Color.Black
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .clickable(
-                    interactionSource = MutableInteractionSource(),
-                    indication = null
-                ) { viewModel.onTimerClicked() }
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.Black)
+                .padding(horizontal = 12.dp)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Splits (arriba)
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    items(items.value) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = item.name,
-                                color = Color.White,
-                                modifier = Modifier.weight(0.5f)
-                            )
-                            val diffText = viewModel.formatDiffMillis(item.diffMillis)
-                            if (diffText != null) {
-                                val color = when (item.status) {
-                                    ComparisonStatus.GOLD -> Color(0xFFFFD700)
-                                    ComparisonStatus.LOSS_LOSING -> Color(0xFFF44336)   // rojo
-                                    ComparisonStatus.LOSS_GAINING -> Color(0xFF3B0B0B)  // rojo oscuro
-                                    ComparisonStatus.GAIN_LOSING -> Color(0xFF0C330B)   // verde oscuro
-                                    ComparisonStatus.GAIN_GAINING -> Color(0xFF4CAF50)  // verde
-                                    ComparisonStatus.NONE -> Color.Gray
-                                }
-                                Text(text = diffText, color = color, modifier = Modifier.weight(0.25f))
-                            } else {
-                                Spacer(modifier = Modifier.weight(0.25f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Header: show selected group name (not id) and button to open groups
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = selectedGroupName.ifBlank { "Sin grupo" }, color = Color.White)
+                Row {
+                    Button(onClick = { onOpenGroups() }) { Text("Grupos") }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Clickable area covering Splits + Timer (enabled only if there are templates)
+            val clickableEnabled = templates.isNotEmpty()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clickable(
+                        enabled = clickableEnabled,
+                        interactionSource = MutableInteractionSource(),
+                        indication = null
+                    ) {
+                        if (!clickableEnabled) {
+                            scope.launch { snackbarHostState.showSnackbar("Selecciona o crea un grupo con splits primero") }
+                        } else {
+                            viewModel.onTimerClicked()
+                        }
+                    }
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Splits list (scrollable)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 8.dp)
+                    ) {
+                        if (items.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No hay splits",
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(12.dp)
+                                )
                             }
-                            val current = item.currentMillis
-                            val best = item.bestMillis
-                            if (current != null) {
-                                Text(text = viewModel.formatMillis(current), color = Color.White, modifier = Modifier.weight(0.25f))
-                            } else {
-                                Text(text = viewModel.formatMillis(best), color = Color.Gray, modifier = Modifier.weight(0.25f))
+                        } else {
+                            itemsIndexed(items) { _, item ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Name
+                                    Text(
+                                        text = item.name,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(0.45f)
+                                    )
+
+                                    // Diff (acumulado)
+                                    val diffText = viewModel.formatDiffMillis(item.diffMillis)
+                                    Box(modifier = Modifier.weight(0.25f), contentAlignment = Alignment.CenterStart) {
+                                        if (diffText != null) {
+                                            val color = when (item.status) {
+                                                ComparisonStatus.GOLD -> Color(0xFFFFD700)
+                                                ComparisonStatus.LOSS_LOSING -> Color(0xFFF44336)
+                                                ComparisonStatus.LOSS_GAINING -> Color(0xFFB71C1C)
+                                                ComparisonStatus.GAIN_LOSING -> Color(0xFF2E7D32)
+                                                ComparisonStatus.GAIN_GAINING -> Color(0xFF4CAF50)
+                                                ComparisonStatus.NONE -> Color.Gray
+                                            }
+                                            Text(text = diffText, color = color)
+                                        } else {
+                                            Spacer(modifier = Modifier.height(1.dp))
+                                        }
+                                    }
+
+                                    // Current / Best
+                                    Box(modifier = Modifier.weight(0.30f), contentAlignment = Alignment.CenterEnd) {
+                                        val current = item.currentMillis
+                                        val best = item.bestMillis
+                                        if (current != null) {
+                                            Text(text = viewModel.formatMillis(current), color = Color.White)
+                                        } else {
+                                            Text(text = viewModel.formatMillis(best), color = Color.Gray)
+                                        }
+                                    }
+                                }
+                                Divider(color = Color.DarkGray)
                             }
                         }
-                        Divider(color = Color.DarkGray)
+                    }
+
+                    // Timer area (below splits)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .background(Color.DarkGray),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = viewModel.formatMillis(elapsed),
+                            fontSize = 36.sp,
+                            color = Color.White
+                        )
                     }
                 }
+            }
 
-                // Cronómetro (debajo de splits, dentro del área clicable)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(Color.DarkGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = viewModel.formatMillis(elapsed.value),
-                        fontSize = 36.sp,
-                        color = Color.White
-                    )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Buttons row (outside clickable area)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(onClick = { viewModel.onPauseToggle() }, enabled = isRunning) {
+                    Text(if (isPaused) "Resume" else "Pause")
                 }
+                Button(onClick = { viewModel.onReset() }) { Text("Reset") }
+
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp)) // espacio entre area clicable y botones
-
-        // Botones (fuera del área clicable)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = { viewModel.onPauseToggle() }, enabled = isRunning.value) {
-                Text(if (isPaused.value) "Resume" else "Pause")
-            }
-            Button(onClick = { viewModel.onReset() }) {
-                Text("Reset")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp)) // espacio inferior extra
     }
 }
