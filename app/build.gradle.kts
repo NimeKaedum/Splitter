@@ -37,11 +37,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        jvmToolchain(21)
+    }
+    ksp {
+        arg("jvmTarget", "21")
     }
     buildFeatures {
         compose = true
@@ -75,6 +78,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom.v20240800)) // ejemplo
     implementation(libs.androidx.ui)
     implementation(libs.androidx.material3)
+    implementation("com.google.android.material:material:1.12.0")
     implementation(libs.androidx.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
 
@@ -101,4 +105,9 @@ dependencies {
 
     // --- Otras utilidades ---
     implementation(libs.accompanist.permissions) // permisos runtime compose (opcional)
+}
+
+// Configurar el argumento para KSP
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

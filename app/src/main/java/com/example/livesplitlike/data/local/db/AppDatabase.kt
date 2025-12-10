@@ -2,19 +2,21 @@ package com.example.livesplitlike.data.local.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
-import com.example.livesplitlike.data.local.model.SplitEntity
-import com.example.livesplitlike.data.local.model.RunEntity
-import com.example.livesplitlike.data.local.model.ComparisonEntity
+import com.example.livesplitlike.data.local.model.*
 
 @Database(
-    entities = [RunEntity::class, SplitEntity::class, ComparisonEntity::class],
+    entities = [
+        GroupEntity::class,
+        SplitTemplateEntity::class,
+        RunEntity::class,
+        RunTimeEntity::class
+    ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
-@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun groupDao(): GroupDao
+    abstract fun splitTemplateDao(): SplitTemplateDao
     abstract fun runDao(): RunDao
-    abstract fun splitDao(): SplitDao
-    abstract fun comparisonDao(): ComparisonDao
+    abstract fun runTimeDao(): RunTimeDao
 }

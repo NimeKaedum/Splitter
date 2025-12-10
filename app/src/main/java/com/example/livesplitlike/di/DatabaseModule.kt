@@ -4,11 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.livesplitlike.data.local.db.AppDatabase
-import com.example.livesplitlike.data.local.model.RunEntity
-import com.example.livesplitlike.data.local.model.SplitEntity
-import com.example.livesplitlike.data.local.db.RunDao
-import com.example.livesplitlike.data.local.db.SplitDao
-import com.example.livesplitlike.data.local.db.ComparisonDao
+import com.example.livesplitlike.data.local.model.GroupEntity
+import com.example.livesplitlike.data.local.model.SplitTemplateEntity
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Singleton
+import androidx.room.RoomDatabase
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -25,53 +23,40 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext appContext: Context): AppDatabase {
-        // Creamos la instancia y la usamos dentro del callback para pre-populate
+    fun provideDatabase(@ApplicationContext ctx: Context): AppDatabase {
         lateinit var instance: AppDatabase
-        instance = Room.databaseBuilder(appContext, AppDatabase::class.java, "livesplit_db")
-            .addCallback(object : androidx.room.RoomDatabase.Callback() {
+        instance = Room.databaseBuilder(ctx, AppDatabase::class.java, "livesplit_db")
+            .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    // Pre-populate en background
+                    // Prepopulate: un grupo de prueba con 5 splits
+                    // Dentro de DatabaseModule provideDatabase, en onCreate:
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val runId = instance.runDao().insertRun(
-                                RunEntity(
-                                    name = "Demo Run",
-                                    startedAtMillis = 0L,
-                                    createdAtMillis = System.currentTimeMillis()
-                                )
-                            )
+                            val groupId = instance.groupDao().insertGroup(GroupEntity(name = "Demo Group"))
                             val names = listOf("Start", "Segment 1", "Segment 2", "Segment 3", "Finish")
                             names.forEachIndexed { idx, name ->
-                                instance.splitDao().insertSplit(
-                                    SplitEntity(
-                                        runId = runId,
-                                        indexInRun = idx,
-                                        name = name,
-                                        timeFromStartMillis = -1L,
-                                        recordedAtMillis = 0L
+                                instance.splitTemplateDao().insertTemplate(
+                                    SplitTemplateEntity(
+                                        groupId = groupId,
+                                        indexInGroup = idx,
+                                        name = name
                                     )
                                 )
                             }
                         } catch (e: Exception) {
-                            // Ignorar errores de pre-populate
+                            // swallow to avoid crash on first launch
                         }
                     }
                 }
             })
             .fallbackToDestructiveMigration()
             .build()
-
         return instance
     }
 
-    @Provides
-    fun provideRunDao(db: AppDatabase): RunDao = db.runDao()
-
-    @Provides
-    fun provideSplitDao(db: AppDatabase): SplitDao = db.splitDao()
-
-    @Provides
-    fun provideComparisonDao(db: AppDatabase): ComparisonDao = db.comparisonDao()
+    @Provides fun provideGroupDao(db: AppDatabase) = db.groupDao()
+    @Provides fun provideSplitTemplateDao(db: AppDatabase) = db.splitTemplateDao()
+    @Provides fun provideRunDao(db: AppDatabase) = db.runDao()
+    @Provides fun provideRunTimeDao(db: AppDatabase) = db.runTimeDao()
 }

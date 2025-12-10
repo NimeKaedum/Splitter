@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "runs",
+    tableName = "split_templates",
     foreignKeys = [ForeignKey(
         entity = GroupEntity::class,
         parentColumns = ["id"],
@@ -15,8 +15,9 @@ import androidx.room.PrimaryKey
     )],
     indices = [Index("groupId")]
 )
-data class RunEntity(
+data class SplitTemplateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     val groupId: Long,
-    val createdAtMillis: Long = System.currentTimeMillis()
+    val indexInGroup: Int,
+    val name: String
 )
