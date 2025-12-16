@@ -1,6 +1,7 @@
 package com.example.livesplitlike.ui.screens.timer
 
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.livesplitlike.data.local.db.GroupDao
@@ -140,6 +141,7 @@ class TimerViewModel @Inject constructor(
     private var splitBestJob: Job? = null
 
     init {
+        Log.d("SettingsGm", "TimerViewModel init hash=${this.hashCode()}")
         viewModelScope.launch(Dispatchers.IO) {
             // Try to select default group if exists
             val defaultGroup = groupDao.getGroupById(defaultGroupId)
@@ -373,8 +375,14 @@ class TimerViewModel @Inject constructor(
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        Log.d("SettingsGm", "TimerViewModel onCleared hash=${this.hashCode()}")
+    }
+
     // Public: user tapped the timer
     fun onTimerClicked() {
+        Log.d("SettingsGm", "onTimerClicked invoked in TimerViewModel; isRunning=${_isRunning.value}")
         viewModelScope.launch(Dispatchers.IO) {
             val groupId = _templates.value.firstOrNull()?.groupId ?: defaultGroupId
 

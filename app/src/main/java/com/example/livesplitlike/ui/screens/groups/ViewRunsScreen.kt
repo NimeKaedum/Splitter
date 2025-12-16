@@ -1,33 +1,199 @@
 package com.example.livesplitlike.ui.screens.groups
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Text
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.compose.ui.platform.LocalContext
 
+@Composable
+fun ViewRunsScreen(
+    groupId: Long,
+    onBack: () -> Unit,
+    vm: ViewRunsViewModel = hiltViewModel()
+) {
+    val templates by vm.templates.collectAsState()
+    val bestCum by vm.bestCumulative.collectAsState()
+    val theoretical by vm.theoreticalBestCumulative.collectAsState()
+    val runs by vm.runsWithTimes.collectAsState()
+    val groupName by vm.groupName.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
+    // Estado para confirmar eliminación
+    var pendingDeleteRunId by remember { mutableStateOf<Long?>(null) }
+    var pendingDeleteRunLabel by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(groupId) {
+        vm.loadGroupRuns(groupId)
+    }
+
+    val cellWidth = 96.dp
+    val headerHeight = 56.dp
+    val smallFont = 12.sp
+    val normalFont = 14.sp
+
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
+        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = groupName, color = Color.White, fontSize = 24.sp, modifier = Modifier.weight(1f))
+                Button(onClick = { onBack() }) { Text("Regresar") }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
+                val hScroll = rememberScrollState()
+                val vScroll = rememberScrollState()
+
+                Column(modifier = Modifier.fillMaxSize().horizontalScroll(hScroll)) {
+                    // Header
+                    Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
+                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                            Text(text = "Runs", color = Color.White, fontSize = normalFont)
+                        }
+                        templates.forEach { tpl ->
+                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                Text(text = tpl.name, color = Color.White, fontSize = smallFont)
+                            }
+                        }
+                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                            Text(text = "Opciones", color = Color.White, fontSize = smallFont)
+                        }
+                    }
+
+                    Divider(color = Color.DarkGray)
+
+                    Column(modifier = Modifier.fillMaxWidth().verticalScroll(vScroll)) {
+                        // PB row (solo compartir)
+                        Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
+                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
+                                Text(text = "PB", color = Color.Green, fontSize = normalFont)
+                            }
+                            for (i in templates.indices) {
+                                val t = bestCum.getOrNull(i) ?: 0L
+                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.Green, fontSize = smallFont)
+                                }
+                            }
+                            // Compartir PB
+                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                Button(onClick = {
+                                    val msg = vm.buildPbShareMessage()
+                                    shareOnWhatsApp(context, msg)
+                                }) { Text("Compartir", fontSize = 12.sp) }
+                            }
+                        }
+
+                        Divider(color = Color.DarkGray)
+
+                        // Best Possible Time row (solo compartir)
+                        Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
+                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
+                                Text(text = "Best Possible Time", color = Color(0xFFFFD700), fontSize = normalFont)
+                            }
+                            for (i in templates.indices) {
+                                val t = theoretical.getOrNull(i) ?: 0L
+                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color(0xFFFFD700), fontSize = smallFont)
+                                }
+                            }
+                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                Button(onClick = {
+                                    val msg = vm.buildBestPossibleShareMessage()
+                                    shareOnWhatsApp(context, msg)
+                                }) { Text("Compartir", fontSize = 12.sp) }
+                            }
+                        }
+
+                        Divider(color = Color.DarkGray)
+
+                        // Runs rows: cada fila tiene dropdown con Compartir y Eliminar
+                        runs.forEachIndexed { idx, pair ->
+                            val run = pair.first
+                            val times = pair.second.sortedBy { it.splitIndex }
+                            // state para el dropdown de esta fila
+                            var expanded by remember { mutableStateOf(false) }
+
+                            Row(modifier = Modifier.height(headerHeight).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
+                                    Text(text = "Run ${run.id}", color = Color.White, fontSize = normalFont)
+                                }
+                                for (i in templates.indices) {
+                                    val t = times.getOrNull(i)?.timeFromStartMillis ?: 0L
+                                    Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                        Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.White, fontSize = smallFont)
+                                    }
+                                }
+
+                                // Botón "..." que abre dropdown con Compartir y Eliminar
+                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
+                                    TextButton(onClick = { expanded = true }) {
+                                        Text(text = "...", color = Color.White, fontSize = 18.sp)
+                                    }
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        DropdownMenuItem(text = { Text("Compartir") }, onClick = {
+                                            expanded = false
+                                            val msg = vm.buildRunShareMessage(idx)
+                                            shareOnWhatsApp(context, msg)
+                                        })
+                                        DropdownMenuItem(text = { Text("Eliminar") }, onClick = {
+                                            expanded = false
+                                            // preparar confirmación
+                                            pendingDeleteRunId = run.id
+                                            pendingDeleteRunLabel = "Run ${run.id}"
+                                        })
+                                    }
+                                }
+                            }
+                            Divider(color = Color.DarkGray)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialogo de confirmación para eliminar run
+    if (pendingDeleteRunId != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteRunId = null; pendingDeleteRunLabel = null },
+            title = { Text("Eliminar run") },
+            text = { Text("¿Eliminar ${pendingDeleteRunLabel ?: "esta run"}? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val rid = pendingDeleteRunId!!
+                    pendingDeleteRunId = null
+                    val label = pendingDeleteRunLabel
+                    pendingDeleteRunLabel = null
+                    // ejecutar eliminación y recargar
+                    scope.launch {
+                        vm.deleteRun(groupId, rid)
+                    }
+                }) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteRunId = null; pendingDeleteRunLabel = null }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+// Helper para compartir por WhatsApp o fallback al share sheet
 private fun shareOnWhatsApp(context: Context, text: String) {
     val pm: PackageManager = context.packageManager
     val whatsappInstalled = try {
@@ -44,7 +210,6 @@ private fun shareOnWhatsApp(context: Context, text: String) {
         try {
             context.startActivity(intent)
         } catch (_: ActivityNotFoundException) {
-            // fallback to generic share
             val generic = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
@@ -57,170 +222,5 @@ private fun shareOnWhatsApp(context: Context, text: String) {
             putExtra(Intent.EXTRA_TEXT, text)
         }
         context.startActivity(Intent.createChooser(generic, "Compartir"))
-    }
-}
-
-/**
- * Vista de Runs del grupo.
- *
- * - Cabecera grande con el nombre del grupo.
- * - Tabla sin bordes: columnas = splits (+ columna "Compartir"), filas = PB, Best Possible Time, runs...
- * - Scroll horizontal y vertical para muchos splits / runs.
- * - Todas las celdas tienen el mismo ancho fijo para mantener la rejilla.
- */
-
-@Composable
-fun ViewRunsScreen(
-    groupId: Long,
-    onBack: () -> Unit,
-    vm: ViewRunsViewModel = hiltViewModel()
-) {
-    val context = LocalContext.current
-    val groupName = vm.groupName.collectAsState().value
-    val templates = vm.templates.collectAsState().value
-    val bestCum = vm.bestCumulative.collectAsState().value
-    val splitBest = vm.splitBestSegments.collectAsState().value
-    val theoretical = vm.theoreticalBestCumulative.collectAsState().value
-    val runs = vm.runsWithTimes.collectAsState().value
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(groupId) {
-        vm.loadGroupRuns(groupId)
-    }
-
-    // Fixed cell width; adjust if you want smaller/larger cells
-    val cellWidth = 96.dp
-    val headerHeight = 56.dp
-    val smallFont = 12.sp
-    val normalFont = 14.sp
-
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-            // Top: group name large
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = groupName, color = Color.White, fontSize = 24.sp, modifier = Modifier.weight(1f))
-                Button(onClick = { onBack() }) { Text("Regresar") }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Table area: horizontal scroll for many splits, vertical scroll for many runs
-            // We compose a header row and a scrollable body.
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent)
-            ) {
-                // Horizontal scroll state for columns
-                val hScroll = rememberScrollState()
-                // Vertical scroll state for rows
-                val vScroll = rememberScrollState()
-
-                Column(modifier = Modifier
-                    .fillMaxSize()
-                    .horizontalScroll(hScroll)
-                ) {
-                    // Header row: first column "Runs", then split names, then "Compartir"
-                    Row(modifier = Modifier
-                        .height(headerHeight)
-                        .fillMaxWidth()
-                    ) {
-                        // Runs header
-                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "Runs", color = Color.White, fontSize = normalFont)
-                        }
-                        // Split headers
-                        templates.forEach { tpl ->
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Text(text = tpl.name, color = Color.White, fontSize = smallFont)
-                            }
-                        }
-                        // Share column header
-                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "Compartir", color = Color.White, fontSize = smallFont)
-                        }
-                    }
-
-                    Divider(color = Color.DarkGray)
-
-                    // Body: vertical scrollable list of rows
-                    Column(modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(vScroll)
-                    ) {
-                        // First row: PB (best cumulative) in green
-                        Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                Text(text = "PB", color = Color.Green, fontSize = normalFont)
-                            }
-                            for (i in templates.indices) {
-                                val t = bestCum.getOrNull(i) ?: 0L
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.Green, fontSize = smallFont)
-                                }
-                            }
-                            // Share button
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Button(onClick = {
-                                    val msg = vm.buildPbShareMessage()
-                                    shareOnWhatsApp(context, msg)
-                                }) { Text("Compartir", fontSize = 12.sp) }
-                            }
-                        }
-
-
-                        Divider(color = Color.DarkGray)
-
-                        // Second row: Best Possible Time (theoretical) in gold
-                        Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                Text(text = "Best Possible Time", color = Color(0xFFFFD700), fontSize = normalFont)
-                            }
-                            for (i in templates.indices) {
-                                val t = theoretical.getOrNull(i) ?: 0L
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color(0xFFFFD700), fontSize = smallFont)
-                                }
-                            }
-                            // Share button
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Button(onClick = {
-                                    val msg = vm.buildBestPossibleShareMessage()
-                                    shareOnWhatsApp(context, msg)
-                                }) { Text("Compartir", fontSize = 12.sp) }
-                            }
-                        }
-
-
-                        Divider(color = Color.DarkGray)
-
-                        // Remaining rows: each run
-                        // We show runs in the order provided by ViewModel (expected newest first)
-                        runs.forEachIndexed { idx, pair ->
-                            val run = pair.first
-                            val times = pair.second.sortedBy { it.splitIndex } // ensure order
-                            Row(modifier = Modifier.height(headerHeight).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                    Text(text = "Run ${run.id}", color = Color.White, fontSize = normalFont)
-                                }
-                                for (i in templates.indices) {
-                                    val t = times.getOrNull(i)?.timeFromStartMillis ?: 0L
-                                    Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                        Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.White, fontSize = smallFont)
-                                    }
-                                }
-                                // Share button
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    Button(onClick = {
-                                        val msg = vm.buildRunShareMessage(idx)
-                                        shareOnWhatsApp(context, msg)
-                                    }) { Text("Compartir", fontSize = 12.sp) }
-                                }
-                            }
-                            Divider(color = Color.DarkGray)
-                        }
-                    }
-                }
-            }
-        }
     }
 }

@@ -17,4 +17,10 @@ interface GroupDao {
 
     @Delete
     suspend fun deleteGroup(group: GroupEntity)
+
+    @Query("SELECT * FROM groups")
+    suspend fun getAllSync(): List<GroupEntity>
+
+    @Query("DELETE FROM groups")
+    suspend fun deleteAll()
 }

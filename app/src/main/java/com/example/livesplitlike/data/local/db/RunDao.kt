@@ -18,4 +18,12 @@ interface RunDao {
     @Query("SELECT * FROM runs WHERE id = :runId LIMIT 1")
     suspend fun getRunById(runId: Long): RunEntity?
 
+    @Query("DELETE FROM runs WHERE id = :runId")
+    suspend fun deleteRunById(runId: Long)
+
+    @Query("SELECT * FROM runs")
+    suspend fun getAllSync(): List<RunEntity>
+
+    @Query("DELETE FROM runs")
+    suspend fun deleteAll()
 }

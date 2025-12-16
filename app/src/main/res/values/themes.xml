@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Renamed to Theme.LiveSplitLike to avoid confusion -->
-    <!-- Parent is explicitly Material3...NoActionBar -->
     <style name="Theme.LiveSplitLike" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Status bar configuration -->
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -11,9 +9,9 @@
         <!-- Navigation bar configuration -->
         <item name="android:navigationBarColor">@android:color/black</item>
 
-        <!-- Crucial lines to ensure ActionBar is gone in edge cases -->
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+        <!-- IMPORTANT: Use the 'android:' prefix for these attributes -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 
 </resources>

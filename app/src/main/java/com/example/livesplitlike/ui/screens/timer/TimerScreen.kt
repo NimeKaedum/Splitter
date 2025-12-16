@@ -1,5 +1,6 @@
 package com.example.livesplitlike.ui.screens.timer
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,34 +14,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(
-    viewModel: TimerViewModel = hiltViewModel(),
-    navController: NavHostController? = null,
-    onOpenGroups: () -> Unit
+    vm: com.example.livesplitlike.ui.screens.timer.TimerViewModel, // recibe la instancia desde MainActivity/AppNavHost
+    navController: NavController,
+    onOpenGroups: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
-    val elapsed by viewModel.elapsedMillis.collectAsState()
-    val items by viewModel.comparisonItemsFlow.collectAsState(initial = emptyList())
-    val isRunning by viewModel.isRunning.collectAsState()
-    val isPaused by viewModel.isPaused.collectAsState()
-    val templates by viewModel.templates.collectAsState()
-    val selectedGroupName by viewModel.selectedGroupName.collectAsState()
+    // Usar la única instancia "vm" en toda la pantalla
+    val elapsed by vm.elapsedMillis.collectAsState()
+    val items by vm.comparisonItemsFlow.collectAsState(initial = emptyList())
+    val isRunning by vm.isRunning.collectAsState()
+    val isPaused by vm.isPaused.collectAsState()
+    val templates by vm.templates.collectAsState()
+    val selectedGroupName by vm.selectedGroupName.collectAsState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val interactionSource = remember { MutableInteractionSource() }
 
     // Observe selection result from Groups screen via savedStateHandle
     LaunchedEffect(navController) {
-        navController?.currentBackStackEntryFlow?.collectLatest { entry ->
+        navController.currentBackStackEntryFlow.collectLatest { entry ->
             val saved = entry.savedStateHandle.get<Long?>("selectedGroupId")
             if (saved != null) {
                 if (saved > 0L) {
-                    viewModel.selectGroup(saved)
+                    vm.selectGroup(saved)
                 } else {
                     scope.launch { snackbarHostState.showSnackbar("Grupo inválido seleccionado") }
                 }
@@ -70,7 +73,8 @@ fun TimerScreen(
             ) {
                 Text(text = selectedGroupName.ifBlank { "Sin grupo" }, color = Color.White)
                 Row {
-                    Button(onClick = { onOpenGroups() }) { Text("Grupos") }
+                    Button(onClick = { onOpenGroups() }) { Text("H") }
+                    Button(onClick = { onOpenSettings() }) { Text("C") }
                 }
             }
 
@@ -84,13 +88,13 @@ fun TimerScreen(
                     .weight(1f)
                     .clickable(
                         enabled = clickableEnabled,
-                        interactionSource = MutableInteractionSource(),
+                        interactionSource = interactionSource,
                         indication = null
                     ) {
                         if (!clickableEnabled) {
                             scope.launch { snackbarHostState.showSnackbar("Selecciona o crea un grupo con splits primero") }
                         } else {
-                            viewModel.onTimerClicked()
+                            vm.onTimerClicked()
                         }
                     }
             ) {
@@ -126,7 +130,7 @@ fun TimerScreen(
                                     )
 
                                     // Diff (acumulado)
-                                    val diffText = viewModel.formatDiffMillis(item.diffMillis)
+                                    val diffText = vm.formatDiffMillis(item.diffMillis)
                                     Box(modifier = Modifier.weight(0.25f), contentAlignment = Alignment.CenterStart) {
                                         if (diffText != null) {
                                             val color = when (item.status) {
@@ -148,9 +152,9 @@ fun TimerScreen(
                                         val current = item.currentMillis
                                         val best = item.bestMillis
                                         if (current != null) {
-                                            Text(text = viewModel.formatMillis(current), color = Color.White)
+                                            Text(text = vm.formatMillis(current), color = Color.White)
                                         } else {
-                                            Text(text = viewModel.formatMillis(best), color = Color.Gray)
+                                            Text(text = vm.formatMillis(best), color = Color.Gray)
                                         }
                                     }
                                 }
@@ -168,7 +172,7 @@ fun TimerScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = viewModel.formatMillis(elapsed),
+                            text = vm.formatMillis(elapsed),
                             fontSize = 36.sp,
                             color = Color.White
                         )
@@ -185,12 +189,19 @@ fun TimerScreen(
                     .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Button(onClick = { viewModel.onPauseToggle() }, enabled = isRunning) {
+                Button(onClick = { vm.onPauseToggle() }, enabled = isRunning) {
                     Text(if (isPaused) "Resume" else "Pause")
                 }
-                Button(onClick = { viewModel.onReset() }) { Text("Reset") }
+                Button(onClick = { vm.onReset() }) { Text("Reset") }
+
+                Button(onClick = { onOpenGroups() }) { Text("Grupos") }
 
             }
         }
+    }
+
+    // Debug: confirmar hash de la instancia usada
+    LaunchedEffect(Unit) {
+        Log.d("SettingsGm", "TimerScreen using vm hash=${vm.hashCode()}")
     }
 }

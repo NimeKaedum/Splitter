@@ -185,4 +185,20 @@ class ViewRunsViewModel @Inject constructor(
         }
         return sb.toString().trim()
     }
+
+    fun deleteRun(groupId: Long, runId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // eliminar run_times asociados
+                runTimeDao.deleteTimesForRun(runId, groupId)
+                // eliminar run
+                runDao.deleteRunById(runId)
+            } catch (e: Exception) {
+                // evitar crash; podrías loggear el error si quieres
+            }
+            // recargartodo para recalcular PB y Best Possible Time
+            loadGroupRuns(groupId)
+        }
+    }
+
 }

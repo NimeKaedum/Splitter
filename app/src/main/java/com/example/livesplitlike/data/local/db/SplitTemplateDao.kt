@@ -18,4 +18,10 @@ interface SplitTemplateDao {
 
     @Delete
     suspend fun deleteTemplate(template: SplitTemplateEntity)
+
+    @Query("SELECT * FROM split_templates")
+    suspend fun getAllSync(): List<SplitTemplateEntity>
+
+    @Query("DELETE FROM split_templates")
+    suspend fun deleteAll()
 }

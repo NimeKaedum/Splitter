@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
-    //id("com.google.gms.google-services")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -70,6 +70,8 @@ dependencies {
     // --- Core ---
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android) // versión ejemplo
+    implementation(libs.kotlinx.coroutines.play.services)
+
     // --- Lifecycle / ViewModel / SavedState ---
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
@@ -78,6 +80,9 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom.v20240800)) // ejemplo
     implementation(libs.androidx.ui)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.material:material-icons-core:1.7.6")
+    implementation("androidx.compose.material:material-icons-extended:1.7.6")
+    implementation("androidx.compose.material:material:1.10.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation(libs.androidx.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
@@ -90,15 +95,23 @@ dependencies {
     // --- Hilt (DI) ---
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-
+    implementation("com.google.dagger:hilt-android:2.57.1")
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation("com.jakewharton.timber:timber:5.0.1")
+    // Check GitHub for the latest version
+
+    // DataStore preferences
+    implementation("androidx.datastore:datastore-preferences:1.2.0")
 
     // --- Firebase (Auth, Firestore, Storage) usando BoM ---
-    //implementation(platform(libs.firebase.bom)) // ejemplo
-    //implementation(libs.firebase.auth.ktx)
-    //implementation(libs.firebase.firestore.ktx)
-    //implementation(libs.firebase.storage.ktx)
-    //implementation(libs.play.services.auth) // Google Sign-In
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+    implementation(libs.play.services.auth) // Google Sign-In
+    implementation("io.coil-kt.coil3:coil-compose:3.0.4") // Make sure this matches
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4") // <--- ADD THIS
+
 
     // --- Reconocimiento de voz: no requiere dependencia (SpeechRecognizer está en SDK) ---
     // Si optas por ML Kit o STT externo, añade su SDK aquí.

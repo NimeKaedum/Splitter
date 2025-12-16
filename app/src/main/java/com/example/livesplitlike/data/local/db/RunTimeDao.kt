@@ -28,6 +28,14 @@ interface RunTimeDao {
     """)
     suspend fun getTotalsByRun(groupId: Long): List<RunTotal>
 
+    @Query("DELETE FROM run_times WHERE runId = :runId AND groupId = :groupId")
+    suspend fun deleteTimesForRun(runId: Long, groupId: Long)
+
+    @Query("SELECT * FROM run_times")
+    suspend fun getAllSync(): List<RunTimeEntity>
+
+    @Query("DELETE FROM run_times")
+    suspend fun deleteAll()
     /**
      * SPLITBEST: para cada splitIndex (indexInGroup) calcula el segmentMillis por run
      * (timeFromStartMillis - previous timeFromStartMillis, prev = 0 para index 0),
