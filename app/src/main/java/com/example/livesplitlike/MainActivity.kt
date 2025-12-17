@@ -3,13 +3,11 @@ package com.example.livesplitlike
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,7 +22,6 @@ import com.example.livesplitlike.ui.screens.groups.ViewRunsScreen
 import com.example.livesplitlike.ui.screens.settings.SettingsScreen
 import com.example.livesplitlike.ui.screens.timer.TimerScreen
 import com.example.livesplitlike.ui.theme.AppTheme
-import com.example.livesplitlike.utils.keyCodeToName
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch

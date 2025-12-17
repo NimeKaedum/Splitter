@@ -24,10 +24,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.withContext
 import android.util.Log
 import com.example.livesplitlike.data.ButtonMappingStore
-import com.example.livesplitlike.utils.keyCodeToName
+import com.example.livesplitlike.data.keyCodeToName
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.asStateFlow
-import timber.log.Timber
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(

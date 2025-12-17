@@ -1,8 +1,11 @@
 package com.example.livesplitlike.ui.screens.settings
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -19,12 +22,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
-import com.example.livesplitlike.utils.keyCodeToName
+import com.example.livesplitlike.data.keyCodeToName
+import com.example.livesplitlike.services.overlay.OverlayService
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.auth.FirebaseAuth
-import timber.log.Timber
+import kotlin.jvm.java
+import androidx.compose.material3.Button
+import androidx.compose.material3.Switch
 
 @Composable
 fun SettingsScreen(
@@ -38,7 +44,7 @@ fun SettingsScreen(
     val photoUrl by vm.photoUrl.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
     val message by vm.message.collectAsState()
-    val defaultWebClientId = context.getString(com.example.livesplitlike.R.string.default_web_client_id)
+    val defaultWebClientId = stringResource(com.example.livesplitlike.R.string.default_web_client_id)
 
     // Configura GoogleSignInClient
     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -177,6 +183,8 @@ fun SettingsScreen(
             }
 
             AssignButtonSection(vm)
+            SettingsOverlayControls()
+            AccessibilitySetupHint()
         }
     }
 }
@@ -206,8 +214,93 @@ fun AssignButtonSection(vm: com.example.livesplitlike.ui.screens.settings.Settin
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = mappedKey?.let { "Asignado: ${com.example.livesplitlike.utils.keyCodeToName(it)}" }
+            text = mappedKey?.let { "Asignado: ${keyCodeToName(it)}" }
                 ?: "No hay botón asignado",
         )
     }
 }
+
+@Composable
+fun SettingsOverlayControls() {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var overlayActive by remember { mutableStateOf(OverlayService.isOverlayActive(context)) }
+
+    var overlayTransparent by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        overlayActive = OverlayService.isOverlayActive(context)
+    }
+
+    val overlayPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        // Al volver del permiso, comprobamos y arrancamos si está concedido
+        if (Settings.canDrawOverlays(context)) {
+            startOverlayService(context, overlayTransparent)
+            activity?.moveTaskToBack(true)
+        } else {
+            // Mostrar mensaje al usuario (Snackbar/Toast)
+        }
+    }
+
+    Row {
+        Text("Overlay transparente")
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(checked = overlayTransparent, onCheckedChange = { overlayTransparent = it })
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Button(onClick = {
+        if (Settings.canDrawOverlays(context)) {
+            startOverlayService(context, overlayTransparent)
+            activity?.moveTaskToBack(true)
+        } else {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            )
+            overlayPermissionLauncher.launch(intent)
+        }
+    }) {
+        Text("Abrir overlay (minimizar app)")
+    }
+
+    Button(
+        onClick = {
+            // Detener el servicio que muestra el overlay
+            val intent = Intent(context, OverlayService::class.java)
+            context.stopService(intent)
+            // actualizar UI inmediatamente
+            overlayActive = false
+        },
+        enabled = overlayActive
+    ) {
+        Text(text = "Eliminar overlay")
+    }
+
+}
+
+@Composable
+fun AccessibilitySetupHint() {
+    val context = LocalContext.current
+    Column {
+        Text("Para que el mando controle el timer aunque el juego esté en primer plano, habilita el servicio de accesibilidad.")
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = {
+            // abrir pantalla de accesibilidad
+            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            context.startActivity(intent)
+        }) {
+            Text("Abrir ajustes de accesibilidad")
+        }
+    }
+}
+private fun startOverlayService(context: Context, transparent: Boolean) {
+    val svc = Intent(context, com.example.livesplitlike.services.overlay.OverlayService::class.java).apply {
+        putExtra("transparent", transparent)
+    }
+    ContextCompat.startForegroundService(context, svc)
+}
+

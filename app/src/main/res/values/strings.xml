@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Livesplitlike</string>
+    <string name="accessibility_service_description">Obtener inputs de controlador sin foco</string>
 </resources>

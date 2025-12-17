@@ -53,7 +53,6 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -73,11 +72,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
 
     // --- Lifecycle / ViewModel / SavedState ---
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.service)
 
     // --- Jetpack Compose (usa BOM o versiones estables) ---
-    implementation(platform(libs.androidx.compose.bom.v20240800)) // ejemplo
     implementation(libs.androidx.ui)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-core:1.7.6")

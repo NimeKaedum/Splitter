@@ -1,4 +1,4 @@
-package com.example.livesplitlike.utils
+package com.example.livesplitlike.data
 
 import android.view.KeyEvent
 

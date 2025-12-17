@@ -15,8 +15,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.livesplitlike.timer.ComparisonStatus
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+
+
+private fun statusToColor(status: ComparisonStatus): Color {
+    return when (status) {
+        ComparisonStatus.GOLD -> Color(0xFFFFD700)
+        ComparisonStatus.LOSS_LOSING -> Color(0xFFF44336)
+        ComparisonStatus.LOSS_GAINING -> Color(0xFFB71C1C)
+        ComparisonStatus.GAIN_LOSING -> Color(0xFF2E7D32)
+        ComparisonStatus.GAIN_GAINING -> Color(0xFF4CAF50)
+        ComparisonStatus.NONE -> Color.Gray
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,18 +143,11 @@ fun TimerScreen(
                                     )
 
                                     // Diff (acumulado)
+                                    // Diff (acumulado)
                                     val diffText = vm.formatDiffMillis(item.diffMillis)
                                     Box(modifier = Modifier.weight(0.25f), contentAlignment = Alignment.CenterStart) {
                                         if (diffText != null) {
-                                            val color = when (item.status) {
-                                                ComparisonStatus.GOLD -> Color(0xFFFFD700)
-                                                ComparisonStatus.LOSS_LOSING -> Color(0xFFF44336)
-                                                ComparisonStatus.LOSS_GAINING -> Color(0xFFB71C1C)
-                                                ComparisonStatus.GAIN_LOSING -> Color(0xFF2E7D32)
-                                                ComparisonStatus.GAIN_GAINING -> Color(0xFF4CAF50)
-                                                ComparisonStatus.NONE -> Color.Gray
-                                            }
-                                            Text(text = diffText, color = color)
+                                            Text(text = diffText, color = statusToColor(item.status))
                                         } else {
                                             Spacer(modifier = Modifier.height(1.dp))
                                         }
