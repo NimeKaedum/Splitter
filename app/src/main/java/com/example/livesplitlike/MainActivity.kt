@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +21,7 @@ import com.example.livesplitlike.ui.navigation.NavRoutes
 import com.example.livesplitlike.ui.screens.groups.CreateGroupScreen
 import com.example.livesplitlike.ui.screens.groups.GroupsListScreen
 import com.example.livesplitlike.ui.screens.groups.ViewRunsScreen
+import com.example.livesplitlike.ui.screens.help.HelpScreen
 import com.example.livesplitlike.ui.screens.settings.SettingsScreen
 import com.example.livesplitlike.ui.screens.timer.TimerScreen
 import com.example.livesplitlike.ui.theme.AppTheme
@@ -80,7 +83,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            AppTheme {
+            val isDark by settingsVm.isDarkThemeFlow.collectAsState()
+            AppTheme(darkTheme = isDark) {
                 Surface {
                     AppNavHost(settingsVm = settingsVm, timerVm = timerVm)
                     Log.d("SettingsGm", "MainActivity timerVm hash=${timerVm.hashCode()}")
@@ -186,6 +190,10 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 vm = settingsVm // recuerda pasar la instancia de settings también
             )
+        }
+        // dentro del NavHost builder:
+        composable(NavRoutes.HELP) {
+            HelpScreen(navController = navController)
         }
     }
 }

@@ -6,4 +6,5 @@ object NavRoutes {
     const val CREATE_GROUP = "create_group"
     const val VIEW_RUNS = "view_runs"
     const val SETTINGS = "settings"
+    const val HELP = "help"
 }

@@ -25,8 +25,11 @@ import kotlinx.coroutines.withContext
 import android.util.Log
 import com.example.livesplitlike.data.ButtonMappingStore
 import com.example.livesplitlike.data.keyCodeToName
+import com.example.livesplitlike.di.SettingsDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -332,6 +335,19 @@ class SettingsViewModel @Inject constructor(
                 _isLoading.value = false
                 _message.value = e.localizedMessage ?: "Error al descargar datos"
             }
+        }
+    }
+
+    private val settingsStore = SettingsDataStore(appContext)
+
+    // Exponer un StateFlow para el tema (útil para UI)
+    val isDarkThemeFlow: StateFlow<Boolean> = settingsStore.isDarkThemeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    // Toggle desde ViewModel
+    fun setDarkTheme(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsStore.setDarkTheme(enabled)
         }
     }
 

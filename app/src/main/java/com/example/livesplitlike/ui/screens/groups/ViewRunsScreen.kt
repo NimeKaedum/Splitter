@@ -10,11 +10,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,76 +54,209 @@ fun ViewRunsScreen(
     val smallFont = 12.sp
     val normalFont = 14.sp
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = groupName, color = Color.White, fontSize = 24.sp, modifier = Modifier.weight(1f))
-                Button(onClick = { onBack() }) { Text("Regresar") }
+    // Colores usando la paleta del Theme; caídas seguras si no hubiera Theme
+    val colors = MaterialTheme.colorScheme
+    val background = colors.background
+    val surface = colors.surface
+    val surfaceVariant = colors.surfaceVariant
+    val onSurface = colors.onSurface
+    val headerBg = surfaceVariant
+    val firstColumnBg = colors.surfaceVariant // ligeramente más oscuro para la primera columna
+    val altRowBg = surface
+    val rowBg = background
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding(), // padding para status/navigation bars
+
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            // Top row con título y botón regresar como icono
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = groupName,
+                    color = onSurface,
+                    fontSize = 24.sp,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Regresar"
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 val hScroll = rememberScrollState()
                 val vScroll = rememberScrollState()
 
-                Column(modifier = Modifier.fillMaxSize().horizontalScroll(hScroll)) {
-                    // Header
-                    Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
-                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "Runs", color = Color.White, fontSize = normalFont)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .horizontalScroll(hScroll)
+                ) {
+                    // Header (encabezados de columnas)
+                    Row(
+                        modifier = Modifier
+                            .height(headerHeight)
+                            .fillMaxWidth()
+                    ) {
+                        // Primera celda de header (Runs)
+                        Box(
+                            modifier = Modifier
+                                .width(cellWidth)
+                                .padding(4.dp)
+                                .background(headerBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = "Runs", color = onSurface, fontSize = normalFont, fontWeight = FontWeight.Medium)
                         }
+
                         templates.forEach { tpl ->
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Text(text = tpl.name, color = Color.White, fontSize = smallFont)
+                            Box(
+                                modifier = Modifier
+                                    .width(cellWidth)
+                                    .padding(4.dp)
+                                    .background(headerBg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = tpl.name, color = onSurface, fontSize = smallFont, fontWeight = FontWeight.Medium)
                             }
                         }
-                        Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "Opciones", color = Color.White, fontSize = smallFont)
+
+                        Box(
+                            modifier = Modifier
+                                .width(cellWidth)
+                                .padding(4.dp)
+                                .background(headerBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = "Opciones", color = onSurface, fontSize = smallFont, fontWeight = FontWeight.Medium)
                         }
                     }
 
                     Divider(color = Color.DarkGray)
 
-                    Column(modifier = Modifier.fillMaxWidth().verticalScroll(vScroll)) {
-                        // PB row (solo compartir)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(vScroll)
+                    ) {
+                        // PB row (solo compartir) - mantener color verde original y poner en negrita
                         Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                Text(text = "PB", color = Color.Green, fontSize = normalFont)
+                            Box(
+                                modifier = Modifier
+                                    .width(cellWidth)
+                                    .padding(4.dp)
+                                    .background(Color.Transparent),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = "PB",
+                                    color = Color.Green,
+                                    fontSize = normalFont,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
+
                             for (i in templates.indices) {
                                 val t = bestCum.getOrNull(i) ?: 0L
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.Green, fontSize = smallFont)
+                                Box(
+                                    modifier = Modifier
+                                        .width(cellWidth)
+                                        .padding(4.dp)
+                                        .background(Color.Transparent),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (t > 0L) vm.formatMillis(t) else "--:--.---",
+                                        color = Color.Green,
+                                        fontSize = smallFont,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
-                            // Compartir PB
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Button(onClick = {
+
+                            // Icono compartir
+                            Box(
+                                modifier = Modifier
+                                    .width(cellWidth)
+                                    .padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(onClick = {
                                     val msg = vm.buildPbShareMessage()
                                     shareOnWhatsApp(context, msg)
-                                }) { Text("Compartir", fontSize = 12.sp) }
+                                }, modifier = Modifier.size(40.dp)) {
+                                    Icon(imageVector = Icons.Filled.Share, contentDescription = "Compartir PB")
+                                }
                             }
                         }
 
                         Divider(color = Color.DarkGray)
 
-                        // Best Possible Time row (solo compartir)
+                        // Best Possible Time row (solo compartir) - mantener color original y negrita
                         Row(modifier = Modifier.height(headerHeight).fillMaxWidth()) {
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                Text(text = "Best Possible Time", color = Color(0xFFFFD700), fontSize = normalFont)
+                            Box(
+                                modifier = Modifier
+                                    .width(cellWidth)
+                                    .padding(4.dp)
+                                    .background(Color.Transparent),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = "Best Possible Time",
+                                    color = Color(0xFFFFD700),
+                                    fontSize = normalFont,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
+
                             for (i in templates.indices) {
                                 val t = theoretical.getOrNull(i) ?: 0L
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color(0xFFFFD700), fontSize = smallFont)
+                                Box(
+                                    modifier = Modifier
+                                        .width(cellWidth)
+                                        .padding(4.dp)
+                                        .background(Color.Transparent),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (t > 0L) vm.formatMillis(t) else "--:--.---",
+                                        color = Color(0xFFFFD700),
+                                        fontSize = smallFont,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
-                            Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                Button(onClick = {
+
+                            Box(
+                                modifier = Modifier
+                                    .width(cellWidth)
+                                    .padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(onClick = {
                                     val msg = vm.buildBestPossibleShareMessage()
                                     shareOnWhatsApp(context, msg)
-                                }) { Text("Compartir", fontSize = 12.sp) }
+                                }, modifier = Modifier.size(40.dp)) {
+                                    Icon(imageVector = Icons.Filled.Share, contentDescription = "Compartir BPT")
+                                }
                             }
                         }
 
@@ -129,37 +269,81 @@ fun ViewRunsScreen(
                             // state para el dropdown de esta fila
                             var expanded by remember { mutableStateOf(false) }
 
-                            Row(modifier = Modifier.height(headerHeight).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.CenterStart) {
-                                    Text(text = "Run ${run.id}", color = Color.White, fontSize = normalFont)
+                            // Alternar color de fila para facilitar lectura
+                            val rowBackground = if (idx % 2 == 0) altRowBg else rowBg
+
+                            Row(
+                                modifier = Modifier
+                                    .height(headerHeight)
+                                    .fillMaxWidth()
+                                    .background(rowBackground),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Primera columna (nombre/run) con fondo diferenciado
+                                Box(
+                                    modifier = Modifier
+                                        .width(cellWidth)
+                                        .padding(4.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        text = "Run ${run.id}",
+                                        color = onSurface,
+                                        fontSize = normalFont
+                                    )
                                 }
+
                                 for (i in templates.indices) {
                                     val t = times.getOrNull(i)?.timeFromStartMillis ?: 0L
-                                    Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                        Text(text = if (t > 0L) vm.formatMillis(t) else "--:--.---", color = Color.White, fontSize = smallFont)
+                                    Box(
+                                        modifier = Modifier
+                                            .width(cellWidth)
+                                            .padding(4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = if (t > 0L) vm.formatMillis(t) else "--:--.---",
+                                            color = onSurface,
+                                            fontSize = smallFont
+                                        )
                                     }
                                 }
 
-                                // Botón "..." que abre dropdown con Compartir y Eliminar
-                                Box(modifier = Modifier.width(cellWidth).padding(4.dp), contentAlignment = Alignment.Center) {
-                                    TextButton(onClick = { expanded = true }) {
-                                        Text(text = "...", color = Color.White, fontSize = 18.sp)
+                                // Opciones: icono que abre DropdownMenu
+                                Box(
+                                    modifier = Modifier
+                                        .width(cellWidth)
+                                        .padding(4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    IconButton(onClick = { expanded = true }, modifier = Modifier.size(40.dp)) {
+                                        Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Opciones")
                                     }
+
                                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                                        DropdownMenuItem(text = { Text("Compartir") }, onClick = {
-                                            expanded = false
-                                            val msg = vm.buildRunShareMessage(idx)
-                                            shareOnWhatsApp(context, msg)
-                                        })
-                                        DropdownMenuItem(text = { Text("Eliminar") }, onClick = {
-                                            expanded = false
-                                            // preparar confirmación
-                                            pendingDeleteRunId = run.id
-                                            pendingDeleteRunLabel = "Run ${run.id}"
-                                        })
+                                        DropdownMenuItem(
+                                            text = { Text("Compartir") },
+                                            leadingIcon = { Icon(imageVector = Icons.Filled.Share, contentDescription = null) },
+                                            onClick = {
+                                                expanded = false
+                                                val msg = vm.buildRunShareMessage(idx)
+                                                shareOnWhatsApp(context, msg)
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar") },
+                                            leadingIcon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null) },
+                                            onClick = {
+                                                expanded = false
+                                                // preparar confirmación
+                                                pendingDeleteRunId = run.id
+                                                pendingDeleteRunLabel = "Run ${run.id}"
+                                            }
+                                        )
                                     }
                                 }
                             }
+
                             Divider(color = Color.DarkGray)
                         }
                     }
@@ -168,7 +352,7 @@ fun ViewRunsScreen(
         }
     }
 
-    // Dialogo de confirmación para eliminar run
+    // Dialogo de confirmación para eliminar run (lógica intacta)
     if (pendingDeleteRunId != null) {
         AlertDialog(
             onDismissRequest = { pendingDeleteRunId = null; pendingDeleteRunLabel = null },
@@ -193,7 +377,7 @@ fun ViewRunsScreen(
     }
 }
 
-// Helper para compartir por WhatsApp o fallback al share sheet
+// Helper para compartir por WhatsApp o fallback al share sheet (sin cambios lógicos)
 private fun shareOnWhatsApp(context: Context, text: String) {
     val pm: PackageManager = context.packageManager
     val whatsappInstalled = try {

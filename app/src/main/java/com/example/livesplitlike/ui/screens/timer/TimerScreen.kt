@@ -7,27 +7,35 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.livesplitlike.timer.ComparisonStatus
+import com.example.livesplitlike.ui.navigation.NavRoutes
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.text.font.FontWeight
 
-
-private fun statusToColor(status: ComparisonStatus): Color {
+private fun statusToColor(status: ComparisonStatus): androidx.compose.ui.graphics.Color {
     return when (status) {
-        ComparisonStatus.GOLD -> Color(0xFFFFD700)
-        ComparisonStatus.LOSS_LOSING -> Color(0xFFF44336)
-        ComparisonStatus.LOSS_GAINING -> Color(0xFFB71C1C)
-        ComparisonStatus.GAIN_LOSING -> Color(0xFF2E7D32)
-        ComparisonStatus.GAIN_GAINING -> Color(0xFF4CAF50)
-        ComparisonStatus.NONE -> Color.Gray
+        ComparisonStatus.GOLD -> androidx.compose.ui.graphics.Color(0xFFFFD700)
+        ComparisonStatus.LOSS_LOSING -> androidx.compose.ui.graphics.Color(0xFFF44336)
+        ComparisonStatus.LOSS_GAINING -> androidx.compose.ui.graphics.Color(0xFFB71C1C)
+        ComparisonStatus.GAIN_LOSING -> androidx.compose.ui.graphics.Color(0xFF2E7D32)
+        ComparisonStatus.GAIN_GAINING -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
+        ComparisonStatus.NONE -> androidx.compose.ui.graphics.Color.Gray
     }
 }
 
@@ -39,7 +47,7 @@ fun TimerScreen(
     onOpenGroups: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    // Usar la única instancia "vm" en toda la pantalla
+    // Estado del ViewModel (sin cambios de lógica)
     val elapsed by vm.elapsedMillis.collectAsState()
     val items by vm.comparisonItemsFlow.collectAsState(initial = emptyList())
     val isRunning by vm.isRunning.collectAsState()
@@ -65,35 +73,59 @@ fun TimerScreen(
         }
     }
 
+    val colors = MaterialTheme.colorScheme
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color.Black
+        containerColor = colors.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color.Black)
+                .padding(paddingValues)           // <- volver al comportamiento original
+                .background(colors.background)
                 .padding(horizontal = 12.dp)
-        ) {
+        ){
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Header: show selected group name (not id) and button to open groups
+            // Header: titulo grupo + iconos (Help, Settings)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = selectedGroupName.ifBlank { "Sin grupo" }, color = Color.White)
+                Text(
+                    text = selectedGroupName.ifBlank { "Sin grupo" },
+                    color = colors.onBackground,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
                 Row {
-                    Button(onClick = { onOpenGroups() }) { Text("H") }
-                    Button(onClick = { onOpenSettings() }) { Text("C") }
+                    IconButton(
+                        onClick = { navController.navigate(NavRoutes.HELP) },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Help,
+                            contentDescription = "Ayuda"
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onOpenSettings() },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Configuración"
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Clickable area covering Splits + Timer (enabled only if there are templates)
+            // Clickable area que engloba Splits + Timer (IMPORTANTE: vm.onTimerClicked() se llama aquí)
             val clickableEnabled = templates.isNotEmpty()
             Box(
                 modifier = Modifier
@@ -123,7 +155,7 @@ fun TimerScreen(
                             item {
                                 Text(
                                     text = "No hay splits",
-                                    color = Color.Gray,
+                                    color = colors.onBackground.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(12.dp)
                                 )
                             }
@@ -135,14 +167,13 @@ fun TimerScreen(
                                         .padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Name
+                                    // Nombre
                                     Text(
                                         text = item.name,
-                                        color = Color.White,
+                                        color = colors.onBackground,
                                         modifier = Modifier.weight(0.45f)
                                     )
 
-                                    // Diff (acumulado)
                                     // Diff (acumulado)
                                     val diffText = vm.formatDiffMillis(item.diffMillis)
                                     Box(modifier = Modifier.weight(0.25f), contentAlignment = Alignment.CenterStart) {
@@ -158,29 +189,30 @@ fun TimerScreen(
                                         val current = item.currentMillis
                                         val best = item.bestMillis
                                         if (current != null) {
-                                            Text(text = vm.formatMillis(current), color = Color.White)
+                                            Text(text = vm.formatMillis(current), color = colors.onBackground)
                                         } else {
-                                            Text(text = vm.formatMillis(best), color = Color.Gray)
+                                            Text(text = vm.formatMillis(best), color = colors.onBackground.copy(alpha = 0.6f))
                                         }
                                     }
                                 }
-                                Divider(color = Color.DarkGray)
+                                Divider(color = colors.surfaceVariant)
                             }
                         }
                     }
 
-                    // Timer area (below splits)
+                    // Timer area (debajo de splits) — sigue dentro del clickable
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
-                            .background(Color.DarkGray),
+                            .background(colors.surface),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = vm.formatMillis(elapsed),
-                            fontSize = 36.sp,
-                            color = Color.White
+                            fontSize = 75.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.onSurface
                         )
                     }
                 }
@@ -188,20 +220,48 @@ fun TimerScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Buttons row (outside clickable area)
+            // Botones inferiores: rectángulos grandes, juntos, ocupando todo el ancho.
+            // Importante: están FUERA del Box clickeable (no afectamos vm.onTimerClicked() )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(onClick = { vm.onPauseToggle() }, enabled = isRunning) {
-                    Text(if (isPaused) "Resume" else "Pause")
+                // Reset (replay icon)
+                ElevatedButton(
+                    onClick = { vm.onReset() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.Replay, contentDescription = "Reset")
                 }
-                Button(onClick = { vm.onReset() }) { Text("Reset") }
 
-                Button(onClick = { onOpenGroups() }) { Text("Grupos") }
+                // Pause / Resume (icono dinámico)
+                ElevatedButton(
+                    onClick = { vm.onPauseToggle() },
+                    enabled = isRunning,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                ) {
+                    if (isPaused) {
+                        Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Resume")
+                    } else {
+                        Icon(imageVector = Icons.Filled.Pause, contentDescription = "Pause")
+                    }
+                }
 
+                // Grupos (menu icon) - abre groups
+                ElevatedButton(
+                    onClick = { onOpenGroups() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.Menu, contentDescription = "Grupos")
+                }
             }
         }
     }
